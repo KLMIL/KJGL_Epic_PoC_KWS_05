@@ -4,7 +4,7 @@
 PlayerSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 28
-  productGUID: 0954edfd39b56884682b59831b965c94
+  productGUID: b89a3ccc47944cb40b8d27353fde707b
   AndroidProfiler: 0
   AndroidFilterTouchesWhenObscured: 0
   AndroidEnableSustainedPerformanceMode: 0
@@ -671,12 +671,12 @@ PlayerSettings:
   qnxGraphicConfPath: 
   apiCompatibilityLevel: 6
   captureStartupLogs: {}
-  activeInputHandler: 0
+  activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: 9bfe9747-a505-46e6-8c32-df666aeacd4c
+  cloudProjectId: 2c2d627e-8e1e-494d-9e09-4555c6165725
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: KJGL_Epic_PoC_KWS_05
+  projectName: KJGL_Epic_PoC_KWS_05 2025-05-18_19-16-46
   organizationId: klmil
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
