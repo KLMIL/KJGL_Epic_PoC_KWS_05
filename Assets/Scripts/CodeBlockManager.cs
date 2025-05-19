@@ -17,14 +17,20 @@ public class CodeBlockManager : MonoBehaviour
 {
     [SerializeField] Button _startButton;
     [SerializeField] Button _resetButton;
+
     [SerializeField] Button _moveUpButton;
     [SerializeField] Button _moveLeftButton;
     [SerializeField] Button _moveRightButton;
     [SerializeField] Button _moveDownButton;
+
+    [SerializeField] Button _attackButton;
+
     [SerializeField] GameObject _codeArea;
     [SerializeField] List<GameObject> _slots = new List<GameObject>();
     [SerializeField] GameObject _blockCodePrefab;
     List<string> _codeBlocks = new List<string>();
+
+    int _maxSlots = 10;
 
     public List<string> GetCodeBlocks() => _codeBlocks;
     
@@ -40,13 +46,35 @@ public class CodeBlockManager : MonoBehaviour
         _moveLeftButton.onClick.AddListener(() => AddMoveBlock("left"));
         _moveDownButton.onClick.AddListener(() => AddMoveBlock("down"));
         _moveRightButton.onClick.AddListener(() => AddMoveBlock("right"));
+
+        _attackButton.onClick.AddListener(() => AddAttackBlock());
     }
 
     private void AddMoveBlock(string direction)
     {
-        Debug.Log("AddMoveBLock called");
-        _codeBlocks.Add($"Move {direction}");
-        UpdateCodeDisplay();
+        if (_codeBlocks.Count < _maxSlots)
+        {
+            Debug.Log("AddMoveBLock called");
+            _codeBlocks.Add($"Move {direction}");
+            UpdateCodeDisplay();
+        }
+        else
+        {
+            Debug.LogWarning("Maximum number of command blocks reached!");
+        }
+    }
+
+    private void AddAttackBlock()
+    {
+        if (_codeBlocks.Count < _maxSlots)
+        {
+            _codeBlocks.Add("Attack");
+            UpdateCodeDisplay();
+        }
+        else
+        {
+            Debug.LogWarning("Maximum number of command blocks reached!");
+        }
     }
 
     private void UpdateCodeDisplay()
@@ -86,6 +114,9 @@ public class CodeBlockManager : MonoBehaviour
                         break;
                     case "move right":
                         commandTxt.text = "Move\nRight";
+                        break;
+                    case "attack":
+                        commandTxt.text = "Attack";
                         break;
                 }
             }

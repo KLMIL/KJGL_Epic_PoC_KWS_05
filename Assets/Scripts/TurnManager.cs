@@ -18,6 +18,7 @@ public class TurnManager : MonoBehaviour
     [SerializeField] CodeBlockManager _codeBlockManager;
 
     UnitController _playerUnitController;
+    UnitController _enemyUnitController;
 
     bool _isExecuting = false;
 
@@ -44,6 +45,9 @@ public class TurnManager : MonoBehaviour
     {
         _playerUnitController = _mapManager.PlayerInstance.GetComponent<UnitController>();
         _playerUnitController.Initialize(_mapManager, new Vector2Int(0, 0), (int)UnitType.Player);
+
+        _enemyUnitController = _mapManager.EnemyInstance.GetComponent<UnitController>();
+        _enemyUnitController.Initialize(_mapManager, new Vector2Int(1, 1), (int)UnitType.Enemy);
     }
 
     public void StartTurnExecution()
@@ -76,6 +80,22 @@ public class TurnManager : MonoBehaviour
         {
             string direction = command.Split(' ')[1];
             _playerUnitController.Move(direction);
+        }
+        else if (command.ToLower() == "attack")
+        {
+            if (_enemyUnitController != null && _enemyUnitController.IsAlive())
+            {
+                _playerUnitController.Attack(_enemyUnitController);
+                if (!_enemyUnitController.IsAlive())
+                {
+                    _mapManager.RemoveUnit(_enemyUnitController.Position);
+                    _enemyUnitController = null;
+                }
+            }
+            else
+            {
+                LogManager.Instance.AddLog("No enemy to attack!");
+            }
         }
     }
 

@@ -7,6 +7,7 @@
  * - 맵 위에 유닛 위치 정보 저장 및 스프라이트 이동
  *********************************************************/
 
+using NUnit.Framework;
 using NUnit.Framework.Constraints;
 using UnityEngine;
 
@@ -24,9 +25,12 @@ public class MapManager : MonoBehaviour
     float _cellSize = 1f;
 
     [SerializeField] GameObject _playerPrefab;
+    [SerializeField] GameObject _enemyPrefab;
 
     GameObject _playerInstance;
+    GameObject _enemyInstance;
     public GameObject PlayerInstance => _playerInstance;
+    public GameObject EnemyInstance => _enemyInstance;
 
 
     private void Start()
@@ -46,13 +50,22 @@ public class MapManager : MonoBehaviour
 
         // 초기 위치 설정
         _map[2, 2] = (int)UnitType.Player; // (0, 0), 중앙
+        _map[3, 3] = (int)UnitType.Enemy; // (1, 1), 플레이어 우측 상단 생성
 
-        // 유닛 스폰
+        // 플레이어 유닛 스폰
         if (_playerInstance)
         {
             Destroy(_playerInstance);
         };
         _playerInstance = Instantiate(_playerPrefab, GetWorldPosition(2, 2), Quaternion.identity);
+
+
+        // 적 유닛 스폰
+        if (_enemyInstance)
+        {
+            Destroy(_enemyInstance);
+        }
+        _enemyInstance = Instantiate(_enemyPrefab, GetWorldPosition(3, 3), Quaternion.identity);
     }
 
     public Vector3 GetWorldPosition(int x, int y)
@@ -86,5 +99,15 @@ public class MapManager : MonoBehaviour
         {
             _playerInstance.transform.position = newPosition;
         }
+        else if (unitType == (int)UnitType.Enemy)
+        {
+            _enemyInstance.transform.position = newPosition;
+        }
+    }
+
+    public void RemoveUnit(Vector2Int position)
+    {
+        int offset = _mapSize / 2;
+        _map[position.x + offset, position.y + offset] = (int)UnitType.None;
     }
 }
