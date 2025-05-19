@@ -51,6 +51,9 @@ public class CodeBlockManager : MonoBehaviour
 
     private void UpdateCodeDisplay()
     {
+        // Vertical Layout 문제로 인해(Scale을 줄이는 방식으로 크기 조정한게 문제가 됐음)
+        // 임시로, 객체를 만들어 두고 해당 객체의 자식으로 생성 후 삭제하는 방식으로
+        // 블럭코딩 구현함. 추후 UI 재정립 작업에서 주의할 것.
         foreach (Transform child in _codeArea.transform)
         {
             foreach (Transform grandChild in child)
