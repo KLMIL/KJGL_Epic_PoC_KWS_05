@@ -8,6 +8,7 @@
  *********************************************************/
 
 using System.Collections;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class TurnManager : MonoBehaviour
@@ -63,11 +64,28 @@ public class TurnManager : MonoBehaviour
         _isExecuting = true;
         LogManager.Instance.ClearLog();
         var codeBlocks = _codeBlockManager.GetCodeBlocks();
+
         for (int i = 0; i < codeBlocks.Count; i++)
         {
+            // 플레이어 턴
             LogManager.Instance.IncrementTurn();
             ExecuteTurn(codeBlocks[i]);
             yield return new WaitForSeconds(1f);
+
+            // 적 턴
+            if (_enemyUnitController != null && _enemyUnitController.IsAlive())
+            {
+                LogManager.Instance.AddLog("Enemy's turn");
+                _enemyUnitController.PerformEnemyAction(_playerUnitController);
+                yield return new WaitForSeconds(1f);
+
+                if (!_playerUnitController.IsAlive())
+                {
+                    LogManager.Instance.AddLog("Player defeated! Game Over.");
+                    _isExecuting = false;
+                    yield break;
+                }
+            }
         }
         LogManager.Instance.AddLog("Turn execution completed.\n");
         _isExecuting = false;

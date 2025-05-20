@@ -17,9 +17,12 @@ public class UnitController : MonoBehaviour
     [SerializeField] int _unitType;
     [SerializeField] int _hp = 100;
 
-    public bool IsAlive() => _hp > 0;
-    public int UnitType => _unitType;
     public Vector2Int Position => _position;
+    public int UnitType => _unitType;
+
+    public bool IsAlive() => _hp > 0;
+    
+
 
     public void Initialize(MapManager manager, Vector2Int initialPosition, int type)
     {
@@ -85,6 +88,40 @@ public class UnitController : MonoBehaviour
         else
         {
             LogManager.Instance.AddLog($"{_unitType} at ({_position.x}, {_position.y}) took {damage} damage, HP: {_hp}");
+        }
+    }
+
+
+    // 적 AI 관련
+    public void PerformEnemyAction(UnitController player)
+    {
+        if (!IsAlive() || player == null || !player.IsAlive()) return;
+
+        int distance = Mathf.Abs(_position.x - player.Position.x) + Mathf.Abs(_position.y - player.Position.y);
+        if (distance == 1)
+        {
+            Attack(player);
+        }
+        else
+        {
+            MoveTowardsPlayer(player);
+        }
+    }
+
+    private void MoveTowardsPlayer(UnitController player)
+    {
+        int dx = player.Position.x - _position.x;
+        int dy = player.Position.y - _position.y;
+
+        if (Mathf.Abs(dx) > Mathf.Abs(dy))
+        {
+            if (dx > 0) Move("right");
+            else if (dx < 0) Move("left");
+        }
+        else
+        {
+            if (dy > 0) Move("up");
+            else if (dy < 0) Move("down");
         }
     }
 }
