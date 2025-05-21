@@ -39,7 +39,7 @@ public class CodeBlockManager : MonoBehaviour
     private void Start()
     {
         /* 각 버튼 Add Listener */
-        _startButton.onClick.AddListener(() => TurnManager.Instance.StartTurnExecution());
+        _startButton.onClick.AddListener(() => TurnManager.Instance.ToggleExecution());
         _resetButton.onClick.AddListener(() => TurnManager.Instance.ResetGame());
 
         _moveUpButton.onClick.AddListener(() => AddMoveBlock("up"));

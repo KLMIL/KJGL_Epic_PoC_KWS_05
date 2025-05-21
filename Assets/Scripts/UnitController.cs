@@ -7,6 +7,7 @@
  * - CodeBlockManager에 따른 Unit의 기능 수행
  *********************************************************/
 
+using System.Collections;
 using Unity.Hierarchy;
 using UnityEngine;
 
@@ -16,6 +17,9 @@ public class UnitController : MonoBehaviour
     [SerializeField] Vector2Int _position;
     [SerializeField] int _unitType;
     [SerializeField] int _hp = 100;
+
+    SpriteRenderer _spriteRenderer;
+    Vector3 _originalScale;
 
     public Vector2Int Position => _position;
     public int UnitType => _unitType;
@@ -30,6 +34,9 @@ public class UnitController : MonoBehaviour
         _position = initialPosition;
         _unitType = type;
         transform.position = _mapManager.GetWorldPosition(_position.x + 2, _position.y + 2);
+
+        _spriteRenderer = GetComponent<SpriteRenderer>();
+        _originalScale = transform.localScale;
     }
 
     public void Move(string direction)
@@ -78,6 +85,7 @@ public class UnitController : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
+        StartCoroutine(PlayHitEffect());
         _hp -= damage;
         if (_hp <= 0)
         {
@@ -89,6 +97,40 @@ public class UnitController : MonoBehaviour
         {
             LogManager.Instance.AddLog($"{_unitType} at ({_position.x}, {_position.y}) took {damage} damage, HP: {_hp}");
         }
+    }
+
+    private IEnumerator PlayHitEffect()
+    {
+        float duration = 0.2f;
+        float elapsed = 0f;
+
+        Color _originalColor = _spriteRenderer.color;
+
+        Vector3 targetScale = _originalScale * 0.8f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            transform.localScale = Vector3.Lerp(_originalScale, targetScale, t);
+            _spriteRenderer.color = Color.Lerp(_originalColor, Color.red, t); // 빨간빛 전환
+            yield return null;
+        }
+
+        elapsed = 0f;
+        // 스케일 및 색상 복원
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            transform.localScale = Vector3.Lerp(targetScale, _originalScale, t);
+            _spriteRenderer.color = Color.Lerp(Color.red, _originalColor, t); // 원래 색상 복원
+            yield return null;
+        }
+
+        // 정확히 원래 상태로 복원
+        transform.localScale = _originalScale;
+        _spriteRenderer.color = _originalColor;
     }
 
 

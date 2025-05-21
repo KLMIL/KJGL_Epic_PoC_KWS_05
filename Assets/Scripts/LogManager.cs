@@ -41,6 +41,7 @@ public class LogManager : MonoBehaviour
     }
 
     public void IncrementTurn() => _turnCount++;
+    public int GetTurnCount() => _turnCount;
 
     public void ClearLog()
     {
