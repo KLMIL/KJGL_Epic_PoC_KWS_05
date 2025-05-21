@@ -7,12 +7,9 @@
  * - 각 턴에 따른 흐름 유도
  *********************************************************/
 
-using NUnit.Framework.Constraints;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO.IsolatedStorage;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -38,6 +35,11 @@ public class TurnManager : MonoBehaviour
 
     // 임시로, 버튼 할당해서 텍스트 변경
     [SerializeField] Button _startButton;
+
+    // 임시 HP 표시 텍스트 할당
+    [Header("HP Infos")]
+    [SerializeField] TextMeshProUGUI _playerHPText;
+    [SerializeField] TextMeshProUGUI _enemyHPText;
 
 
 
@@ -179,6 +181,9 @@ public class TurnManager : MonoBehaviour
                     yield break;
                 }
             }
+
+            _enemyHPText.text = $"< Enemy Unit >\nDMG: 10\nHP: {_enemyUnitController.HP}";
+            _playerHPText.text = $"< Player Unit >\nDMG: 10\nHP: {_playerUnitController.HP}";
 
             yield return new WaitForSeconds(1f);
         }

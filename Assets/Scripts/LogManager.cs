@@ -15,6 +15,7 @@ public class LogManager : MonoBehaviour
 {
     public static LogManager Instance { get; private set; }
     [SerializeField] TextMeshProUGUI _logText;
+    [SerializeField] ScrollRect _logScrollRect;
     string _logContent = "";
     int _turnCount = 0;
 
@@ -35,8 +36,7 @@ public class LogManager : MonoBehaviour
         {
             _logText.text = _logContent;
             Canvas.ForceUpdateCanvases();
-            var scrollRect = _logText.GetComponentInParent<ScrollRect>();
-            if (scrollRect) scrollRect.verticalNormalizedPosition = 0f;
+            _logScrollRect.verticalNormalizedPosition = 0f;
         }
     }
 

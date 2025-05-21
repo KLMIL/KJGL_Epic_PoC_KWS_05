@@ -8,7 +8,6 @@
  *********************************************************/
 
 using System.Collections;
-using Unity.Hierarchy;
 using UnityEngine;
 
 public class UnitController : MonoBehaviour
@@ -25,6 +24,7 @@ public class UnitController : MonoBehaviour
     public int UnitType => _unitType;
 
     public bool IsAlive() => _hp > 0;
+    public int HP => _hp;
     
 
 

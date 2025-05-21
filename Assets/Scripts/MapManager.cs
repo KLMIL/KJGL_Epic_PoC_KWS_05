@@ -7,8 +7,6 @@
  * - 맵 위에 유닛 위치 정보 저장 및 스프라이트 이동
  *********************************************************/
 
-using NUnit.Framework;
-using NUnit.Framework.Constraints;
 using UnityEngine;
 
 enum UnitType

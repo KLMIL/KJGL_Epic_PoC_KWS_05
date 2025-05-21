@@ -7,7 +7,6 @@
  * - 플레이어가 선택한 코드 블럭을 저장하고, 정보 전달
  *********************************************************/
 
-using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
