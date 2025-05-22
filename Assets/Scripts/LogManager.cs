@@ -14,9 +14,15 @@ using UnityEngine.UI;
 public class LogManager : MonoBehaviour
 {
     public static LogManager Instance { get; private set; }
+
     [SerializeField] TextMeshProUGUI _logText;
-    [SerializeField] ScrollRect _logScrollRect;
-    string _logContent = "";
+    [SerializeField] RectTransform _logTextRect;
+    [SerializeField] RectTransform _textMaskRect;
+    [SerializeField] Scrollbar _scrollbar;
+
+    float _contentHeight;
+    float _viewHeight;
+
     int _turnCount = 0;
 
     private void Awake()
@@ -29,15 +35,40 @@ public class LogManager : MonoBehaviour
         Instance = this;
     }
 
+    private void Start()
+    {
+        _scrollbar.onValueChanged.AddListener(OnScrollValueChanged);
+        UpdateTextHeight();
+    }
+
     public void AddLog(string message)
     {
-        _logContent += $"Turn {_turnCount}: {message}\n";
-        if (_logText != null)
-        {
-            _logText.text = _logContent;
-            Canvas.ForceUpdateCanvases();
-            _logScrollRect.verticalNormalizedPosition = 0f;
-        }
+        _logText.text += $"Turn {_turnCount}: {message}\n";
+        Canvas.ForceUpdateCanvases();
+        UpdateTextHeight();
+        _scrollbar.value = 0f; // 맨 아래로
+    }
+
+    private void UpdateTextHeight()
+    {
+        _logText.ForceMeshUpdate();
+        _contentHeight = _logText.preferredHeight;
+        _viewHeight = _textMaskRect.rect.height;
+
+        // LogText 높이 조정
+        _logTextRect.sizeDelta = new Vector2(_logTextRect.sizeDelta.x, _contentHeight);
+
+        // Scrollbar 값 설정
+        float scrollable = Mathf.Max(0, _contentHeight - _viewHeight);
+        _scrollbar.size = _viewHeight / _contentHeight;
+        _scrollbar.interactable = scrollable > 0;
+    }
+
+    private void OnScrollValueChanged(float value)
+    {
+        float scrollRange = _contentHeight - _viewHeight;
+        float y = value * scrollRange;
+        _logTextRect.anchoredPosition = new Vector2(0, y);
     }
 
     public void IncrementTurn() => _turnCount++;
@@ -46,7 +77,6 @@ public class LogManager : MonoBehaviour
     public void ClearLog()
     {
         _turnCount = 0;
-        _logContent = "";
         if (_logText != null) _logText.text = "";
     }
 }
