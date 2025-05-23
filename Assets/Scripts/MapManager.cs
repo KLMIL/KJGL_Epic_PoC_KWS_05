@@ -7,6 +7,8 @@
  * - 맵 위에 유닛 위치 정보 저장 및 스프라이트 이동
  *********************************************************/
 
+using NUnit.Framework;
+using System.Collections.Generic;
 using UnityEngine;
 
 enum UnitType
@@ -30,13 +32,19 @@ public class MapManager : MonoBehaviour
     public GameObject PlayerInstance => _playerInstance;
     public GameObject EnemyInstance => _enemyInstance;
 
+    [SerializeField] List<UnitController> _players = new List<UnitController>();
+    [SerializeField] List<UnitController> _enemies = new List<UnitController>();
+
+    public List<UnitController> Players => _players;
+    public List<UnitController> Enemies => _enemies;
+
 
     private void Start()
     {
-        ResetMap();
+        //ResetMap();
     }
 
-    public void ResetMap()
+    public void DEP_ResetMap()
     {
         for (int i = 0; i < _mapSize; i++)
         {
@@ -66,6 +74,36 @@ public class MapManager : MonoBehaviour
         _enemyInstance = Instantiate(_enemyPrefab, GetWorldPosition(3, 3), Quaternion.identity);
     }
 
+    public void ResetMap()
+    {
+        _players.Clear();
+        _enemies.Clear();
+
+        foreach (var p in _players)
+        {
+            if (p != null && p.gameObject != null)
+            {
+                Destroy(p.gameObject);
+            }
+        }
+
+        foreach (var e in _enemies)
+        {
+            if (e != null && e.gameObject != null)
+            {
+                Destroy(e.gameObject);
+            }
+        }
+
+        var player = Instantiate(_playerPrefab, Vector3.zero, Quaternion.identity);
+        player.GetComponent<UnitController>().Initialize(this, Vector2Int.zero, (int)UnitType.Player);
+        _players.Add(player.GetComponent<UnitController>());
+
+        var enemy = Instantiate(_enemyPrefab, Vector3.zero, Quaternion.identity);
+        enemy.GetComponent<UnitController>().Initialize(this, new Vector2Int(2, 2), (int)UnitType.Enemy);
+        _enemies.Add(enemy.GetComponent<UnitController>());
+    }
+
     public Vector3 GetWorldPosition(int x, int y)
     {
         return new Vector3(
@@ -75,7 +113,7 @@ public class MapManager : MonoBehaviour
             );
     }
 
-    public bool IsValidMove(int x, int y)
+    public bool DEP_IsValidMove(int x, int y)
     {
         int offset = _mapSize / 2;
         int mapX = x + offset;
@@ -84,6 +122,12 @@ public class MapManager : MonoBehaviour
         return x >= -offset && x <= offset && y >= -offset && y <= offset
             && mapX >= 0 && mapY >= 0 && mapX < _mapSize && mapY < _mapSize
             && _map[mapX, mapY] == (int)UnitType.None;
+    }
+
+    public bool IsValidMove(Vector2 position)
+    {
+        float boundary = _mapSize * _cellSize / 2;
+        return position.x >= -boundary && position.x <= boundary && position.y >= -boundary && position.y <= boundary;
     }
 
     public void UpdateMap(int oldX, int oldY, int newX, int newY, int unitType)

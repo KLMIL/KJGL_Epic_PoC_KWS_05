@@ -7,7 +7,10 @@
  * - CodeBlockManager에 따른 Unit의 기능 수행
  *********************************************************/
 
+using NUnit.Framework;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class UnitController : MonoBehaviour
@@ -16,6 +19,15 @@ public class UnitController : MonoBehaviour
     [SerializeField] Vector2Int _position;
     [SerializeField] int _unitType;
     [SerializeField] int _hp = 100;
+    [SerializeField] float _moveSpeed = 2f;
+    [SerializeField] float _attackCooldown = 1f;
+    [SerializeField] int _attackDamage = 10;
+    [SerializeField] float _attackRange = 1f;
+    [SerializeField] float _attackRadius = 1f;
+
+    float _lastAttackTime = 0f;
+
+    public bool CanAttack() => Time.time >= _lastAttackTime + _attackCooldown;
 
     SpriteRenderer _spriteRenderer;
     Vector3 _originalScale;
@@ -39,7 +51,7 @@ public class UnitController : MonoBehaviour
         _originalScale = transform.localScale;
     }
 
-    public void Move(string direction)
+    public void DEP_Move(string direction)
     {
         Vector2Int moveDirection = Vector2Int.zero;
         switch (direction.ToLower())
@@ -53,7 +65,7 @@ public class UnitController : MonoBehaviour
         int newX = _position.x + moveDirection.x;
         int newY = _position.y + moveDirection.y;
 
-        if (_mapManager.IsValidMove(newX, newY))
+        if (_mapManager.DEP_IsValidMove(newX, newY))
         {
             _mapManager.UpdateMap(_position.x, _position.y, newX, newY, _unitType);
             _position = new Vector2Int(newX, newY);
@@ -65,7 +77,18 @@ public class UnitController : MonoBehaviour
         }
     }
 
-    public bool Attack(UnitController target)
+    public void MoveTowards(Vector2 target)
+    {
+        Vector2 direction = (target - (Vector2)transform.position).normalized;
+        Vector2 newPosition = (Vector2)transform.position + direction * _moveSpeed * Time.deltaTime;
+        if (_mapManager.IsValidMove(newPosition))
+        {
+            transform.position = newPosition;
+            LogManager.Instance.AddLog($"{_unitType} moved towards {target}");
+        }
+    }
+
+    public bool DEP_Attack(UnitController target)
     {
         if (target == null || !target.IsAlive()) return false;
 
@@ -81,6 +104,20 @@ public class UnitController : MonoBehaviour
             LogManager.Instance.AddLog($"{_unitType} failed to attack {target.UnitType}: Out of range");
             return false;
         }
+    }
+
+    public bool Attack(UnitController target)
+    {
+        if (!CanAttack()) return false;
+        float distance = Vector2.Distance(transform.position, target.transform.position);
+        if (distance <= _attackRange)
+        {
+            target.TakeDamage(_attackDamage);
+            _lastAttackTime = Time.time;
+            LogManager.Instance.AddLog($"{_unitType} attacked {target.UnitType} for {_attackDamage} damage");
+            return true;
+        }
+        return false;
     }
 
     public void TakeDamage(int damage)
@@ -157,13 +194,46 @@ public class UnitController : MonoBehaviour
 
         if (Mathf.Abs(dx) > Mathf.Abs(dy))
         {
-            if (dx > 0) Move("right");
-            else if (dx < 0) Move("left");
+            if (dx > 0) DEP_Move("right");
+            else if (dx < 0) DEP_Move("left");
         }
         else
         {
-            if (dy > 0) Move("up");
-            else if (dy < 0) Move("down");
+            if (dy > 0) DEP_Move("up");
+            else if (dy < 0) DEP_Move("down");
+        }
+    }
+
+    public bool EvaluateCondition(ConditionType condition, List<UnitController> enemies)
+    {
+        switch (condition)
+        {
+            case ConditionType.MonsterNear:
+                return enemies.Any(e => Vector2.Distance(transform.position, e.transform.position) <= 1f);
+            case ConditionType.NoMonsterNear:
+                return !enemies.Any(e => Vector2.Distance(transform.position, e.transform.position) <= 3f);
+            case ConditionType.HPLower30:
+                return _hp < 30;
+            default:
+                return false;
+        }
+    }
+
+    public void ExecuteAction(ActionType action, List<UnitController> enemies)
+    {
+        switch (action)
+        {
+            case ActionType.AttackMonster:
+                var nearest = enemies.OrderBy(e => Vector2.Distance(transform.position, e.transform.position)).FirstOrDefault();
+                if (nearest != null && CanAttack()) Attack(nearest);
+                break;
+            case ActionType.MoveToMonster:
+                var target = enemies.OrderBy(e => Vector2.Distance(transform.position, e.transform.position)).FirstOrDefault();
+                if (target != null) MoveTowards(target.transform.position);
+                break;
+            case ActionType.UsePotion:
+                MoveTowards(Vector2.zero);
+                break;
         }
     }
 }

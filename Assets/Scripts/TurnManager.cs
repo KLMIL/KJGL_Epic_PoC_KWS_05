@@ -9,6 +9,7 @@
 
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -59,7 +60,7 @@ public class TurnManager : MonoBehaviour
         _codeBlockManager = FindFirstObjectByType<CodeBlockManager>();
 
         _mapManager.ResetMap();
-        SetupUnits();
+        //SetupUnits();
 
         // 타임라인 버튼 이벤트 추가. 10턴만 쓸거니 하드코딩
         for (int i = 0; i < 10; i++)
@@ -127,7 +128,7 @@ public class TurnManager : MonoBehaviour
         }
     }
 
-    private IEnumerator ExecuteTurns()
+    private IEnumerator DEP_ExecuteTurns()
     {
         _isExecuting = true;
         _isPaused = false;
@@ -192,13 +193,39 @@ public class TurnManager : MonoBehaviour
         _isExecuting = false;
     }
 
+    private IEnumerator ExecuteTurns()
+    {
+        _isExecuting = true;
+        float currentTime = 0f, maxTime = 30f;
+        while (currentTime < maxTime)
+        {
+            var sortedPairs = _codeBlockManager.GetConditionActions().OrderBy(p => p.Priority).ToList();
+            foreach (var pair in sortedPairs)
+            {
+                if (_playerUnitController.EvaluateCondition(pair.Condition, _mapManager.Enemies))
+                {
+                    _playerUnitController.ExecuteAction(pair.Action, _mapManager.Enemies);
+                    break;
+                }
+            }
+
+            if (_enemyUnitController != null && _enemyUnitController.IsAlive())
+            {
+                _enemyUnitController.PerformEnemyAction(_playerUnitController);
+            }
+            currentTime += Time.deltaTime;
+            yield return null;
+        }
+        _isExecuting = false;
+    }
+
     private bool ExecuteTurn(string command)
     {
         Debug.Log($"Executing turn with command: {command}");
         if (command.StartsWith("Move"))
         {
             string direction = command.Split(' ')[1];
-            _playerUnitController.Move(direction);
+            _playerUnitController.DEP_Move(direction);
         }
         else if (command.ToLower() == "attack")
         {

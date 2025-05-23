@@ -7,13 +7,32 @@
  * - 플레이어가 선택한 코드 블럭을 저장하고, 정보 전달
  *********************************************************/
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+public enum ConditionType { MonsterNear, NoMonsterNear, HPLower30 }
+public enum ActionType { AttackMonster, MoveToMonster, UsePotion }
+
+
 public class CodeBlockManager : MonoBehaviour
 {
+    public struct ConditionActionPair
+    {
+        public ConditionType Condition;
+        public ActionType Action;
+        public int Priority;
+    }
+
+    [SerializeField] List<ConditionActionPair> _conditionActions = new List<ConditionActionPair>();
+    [SerializeField] TMP_Dropdown _conditionDropdown;
+    [SerializeField] TMP_Dropdown _actionDropdown;
+    [SerializeField] TMP_Dropdown _priorityDropdown;
+    [SerializeField] Button _addPairButton;
+
     [SerializeField] Button _startButton;
     [SerializeField] Button _resetButton;
 
@@ -32,7 +51,7 @@ public class CodeBlockManager : MonoBehaviour
     int _maxSlots = 10;
 
     public List<string> GetCodeBlocks() => _codeBlocks;
-    
+    public List<ConditionActionPair> GetConditionActions() => _conditionActions;
 
 
     private void Start()
@@ -47,6 +66,26 @@ public class CodeBlockManager : MonoBehaviour
         _moveRightButton.onClick.AddListener(() => AddMoveBlock("right"));
 
         _attackButton.onClick.AddListener(() => AddAttackBlock());
+
+        _addPairButton.onClick.AddListener(AddConditionAction);
+        _conditionDropdown.options = Enum.GetNames(typeof(ConditionType)).Select(name => new TMP_Dropdown.OptionData(name)).ToList();
+        _actionDropdown.options = Enum.GetNames(typeof(ActionType)).Select(name => new TMP_Dropdown.OptionData(name)).ToList();
+        _priorityDropdown.options = Enumerable.Range(1, 11).Select(i => new TMP_Dropdown.OptionData(i.ToString())).ToList();
+    }
+
+    private void AddConditionAction()
+    {
+        if (_conditionActions.Count < _maxSlots)
+        {
+            ConditionActionPair pair = new ConditionActionPair
+            {
+                Condition = (ConditionType)_conditionDropdown.value,
+                Action = (ActionType)_actionDropdown.value,
+                Priority = _priorityDropdown.value + 1
+            };
+            _conditionActions.Add(pair);
+            UpdateCodeDisplay();
+        }
     }
 
     private void AddMoveBlock(string direction)
