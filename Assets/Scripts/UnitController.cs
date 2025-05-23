@@ -1,169 +1,109 @@
-/**********************************************************
- * Script Name: UnitController
- * Author: 김우성
- * Date Created: 2025-05-19
- * Last Modified: 2025-05-19
- * Description: 
- * - CodeBlockManager에 따른 Unit의 기능 수행
- *********************************************************/
-
-using System.Collections;
 using UnityEngine;
+using System.Linq;
+using System.Collections.Generic;
+
+public enum UnitType { Player, Enemy }
+public enum ConditionType { MonsterNear3, NoMonsterNear, HPLower30 }
+public enum ActionType { AttackMonster, MoveToMonster, UsePosition }
 
 public class UnitController : MonoBehaviour
 {
-    [SerializeField] MapManager _mapManager;
-    [SerializeField] Vector2Int _position;
-    [SerializeField] int _unitType;
-    [SerializeField] int _hp = 100;
+    [SerializeField] UnitType _unitType;
+    [SerializeField] float moveSpeed = 2f;
+    [SerializeField] float attackRange = 1.5f;
+    [SerializeField] int attackDamage = 10;
+    [SerializeField] float attackCooldown = 1f;
+    [SerializeField] int maxHP = 100;
+    int _hp;
+    float lastAttackTime = 0f;
+    MapManager _mapManager;
 
-    SpriteRenderer _spriteRenderer;
-    Vector3 _originalScale;
+    public UnitType UnitType => _unitType;
+    public bool IsAlive => _hp > 0;
 
-    public Vector2Int Position => _position;
-    public int UnitType => _unitType;
-
-    public bool IsAlive() => _hp > 0;
-    public int HP => _hp;
-    
-
-
-    public void Initialize(MapManager manager, Vector2Int initialPosition, int type)
+    public void Initialize(MapManager manager, Vector2 position)
     {
         _mapManager = manager;
-        _position = initialPosition;
-        _unitType = type;
-        transform.position = _mapManager.GetWorldPosition(_position.x + 2, _position.y + 2);
-
-        _spriteRenderer = GetComponent<SpriteRenderer>();
-        _originalScale = transform.localScale;
+        transform.position = position;
+        _hp = maxHP;
     }
 
-    public void Move(string direction)
+    public void TakeDamage(int damage)
     {
-        Vector2Int moveDirection = Vector2Int.zero;
-        switch (direction.ToLower())
-        {
-            case "up": moveDirection = new Vector2Int(0, 1); break;
-            case "down": moveDirection = new Vector2Int(0, -1); break;
-            case "left": moveDirection = new Vector2Int(-1, 0); break;
-            case "right": moveDirection = new Vector2Int(1, 0); break;
-        }
+        _hp = Mathf.Max(0, _hp - damage);
+        if (!IsAlive) gameObject.SetActive(false);
+        Debug.Log($"{_unitType} took {damage} damage, HP: {_hp}");
+    }
 
-        int newX = _position.x + moveDirection.x;
-        int newY = _position.y + moveDirection.y;
+    public bool CanAttack() => Time.time >= lastAttackTime + attackCooldown;
 
-        if (_mapManager.IsValidMove(newX, newY))
+    public void MoveTowards(Vector2 target)
+    {
+        Vector2 direction = (target - (Vector2)transform.position).normalized;
+        Vector2 newPosition = (Vector2)transform.position + direction * moveSpeed * Time.deltaTime;
+        if (_mapManager.IsValidMove(newPosition))
         {
-            _mapManager.UpdateMap(_position.x, _position.y, newX, newY, _unitType);
-            _position = new Vector2Int(newX, newY);
-            LogManager.Instance.AddLog($"{_unitType} moved {direction} to ({newX}, {newY})");
-        }
-        else
-        {
-            LogManager.Instance.AddLog($"{_unitType} failed to move {direction} to ({newX}, {newY})");
+            transform.position = newPosition;
+            Debug.Log($"{_unitType} moved towards {target}");
         }
     }
 
     public bool Attack(UnitController target)
     {
-        if (target == null || !target.IsAlive()) return false;
-
-        int distance = Mathf.Abs(_position.x - target._position.x) + Mathf.Abs(_position.y - target._position.y);
-        if (distance == 1) // 맨해튼 거리 1
+        if (!CanAttack()) return false;
+        float distance = Vector2.Distance(transform.position, target.transform.position);
+        if (distance <= attackRange)
         {
-            target.TakeDamage(10); // 10 대미지 부여
-            LogManager.Instance.AddLog($"{_unitType} attacked {target.UnitType} at ({target._position.x}, {target._position.y})");
+            target.TakeDamage(attackDamage);
+            lastAttackTime = Time.time;
+            Debug.Log($"{_unitType} attacked {target.UnitType} for {attackDamage} damage");
             return true;
         }
-        else
+        return false;
+    }
+
+    public bool EvaluateCondition(ConditionType condition, List<UnitController> enemies)
+    {
+        switch (condition)
         {
-            LogManager.Instance.AddLog($"{_unitType} failed to attack {target.UnitType}: Out of range");
-            return false;
+            case ConditionType.MonsterNear3:
+                return enemies.Any(e => Vector2.Distance(transform.position, e.transform.position) <= 3f);
+            case ConditionType.NoMonsterNear:
+                return !enemies.Any(e => Vector2.Distance(transform.position, e.transform.position) <= 3f);
+            case ConditionType.HPLower30:
+                return _hp < 30;
+            default:
+                return false;
         }
     }
 
-    public void TakeDamage(int damage)
+    public void ExecuteAction(ActionType action, List<UnitController> enemies)
     {
-        StartCoroutine(PlayHitEffect());
-        _hp -= damage;
-        if (_hp <= 0)
+        switch (action)
         {
-            _hp = 0;
-            LogManager.Instance.AddLog($"{_unitType} at ({_position.x}, {_position}) has been defeated");
-            gameObject.SetActive(false);
-        }
-        else
-        {
-            LogManager.Instance.AddLog($"{_unitType} at ({_position.x}, {_position.y}) took {damage} damage, HP: {_hp}");
+            case ActionType.AttackMonster:
+                var nearest = enemies.OrderBy(e => Vector2.Distance(transform.position, e.transform.position)).FirstOrDefault();
+                if (nearest != null) Attack(nearest);
+                break;
+            case ActionType.MoveToMonster:
+                var target = enemies.OrderBy(e => Vector2.Distance(transform.position, e.transform.position)).FirstOrDefault();
+                if (target != null) MoveTowards(target.transform.position);
+                break;
+            case ActionType.UsePosition:
+                MoveTowards(Vector2.zero);
+                _hp += 50;
+                break;
         }
     }
 
-    private IEnumerator PlayHitEffect()
+    public void PerformEnemyAction(List<UnitController> players)
     {
-        float duration = 0.2f;
-        float elapsed = 0f;
-
-        Color _originalColor = _spriteRenderer.color;
-
-        Vector3 targetScale = _originalScale * 0.8f;
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / duration;
-            transform.localScale = Vector3.Lerp(_originalScale, targetScale, t);
-            _spriteRenderer.color = Color.Lerp(_originalColor, Color.red, t); // 빨간빛 전환
-            yield return null;
-        }
-
-        elapsed = 0f;
-        // 스케일 및 색상 복원
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / duration;
-            transform.localScale = Vector3.Lerp(targetScale, _originalScale, t);
-            _spriteRenderer.color = Color.Lerp(Color.red, _originalColor, t); // 원래 색상 복원
-            yield return null;
-        }
-
-        // 정확히 원래 상태로 복원
-        transform.localScale = _originalScale;
-        _spriteRenderer.color = _originalColor;
-    }
-
-
-    // 적 AI 관련
-    public void PerformEnemyAction(UnitController player)
-    {
-        if (!IsAlive() || player == null || !player.IsAlive()) return;
-
-        int distance = Mathf.Abs(_position.x - player.Position.x) + Mathf.Abs(_position.y - player.Position.y);
-        if (distance == 1)
-        {
-            Attack(player);
-        }
+        var nearest = players.OrderBy(p => Vector2.Distance(transform.position, p.transform.position)).FirstOrDefault();
+        if (nearest == null) return;
+        float distance = Vector2.Distance(transform.position, nearest.transform.position);
+        if (distance <= attackRange && CanAttack())
+            Attack(nearest);
         else
-        {
-            MoveTowardsPlayer(player);
-        }
-    }
-
-    private void MoveTowardsPlayer(UnitController player)
-    {
-        int dx = player.Position.x - _position.x;
-        int dy = player.Position.y - _position.y;
-
-        if (Mathf.Abs(dx) > Mathf.Abs(dy))
-        {
-            if (dx > 0) Move("right");
-            else if (dx < 0) Move("left");
-        }
-        else
-        {
-            if (dy > 0) Move("up");
-            else if (dy < 0) Move("down");
-        }
+            MoveTowards(nearest.transform.position);
     }
 }
