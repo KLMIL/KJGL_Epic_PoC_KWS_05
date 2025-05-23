@@ -1,111 +1,142 @@
-/**********************************************************
- * Script Name: MapController
- * Author: 김우성
- * Date Created: 2025-05-18
- * Last Modified: 2025-05-18
- * Description: 
- * - 맵 위에 유닛 위치 정보 저장 및 스프라이트 이동
- *********************************************************/
-
+using NUnit.Framework.Constraints;
+using System.Collections.Generic;
+using System.Runtime.InteropServices.WindowsRuntime;
 using UnityEngine;
-
-enum UnitType
-{
-    None = 0,
-    Player = 1,
-    Enemy = 2
-}
 
 public class MapManager : MonoBehaviour
 {
-    int[,] _map = new int[5, 5];
-    int _mapSize = 5;
-    float _cellSize = 1f;
+    [SerializeField] int _gridWidth = 12;
+    [SerializeField] int _gridHeight = 8;
+    [SerializeField] float _tileSize = 1f;
 
-    [SerializeField] GameObject _playerPrefab;
-    [SerializeField] GameObject _enemyPrefab;
+    GameObject[,] _grid; // 유닛 저장용 그리드
+    Vector2 _gridOffset; // 좌표 계산용 오프셋
+    Dictionary<GameObject, Vector2Int> _unitPositions = new Dictionary<GameObject, Vector2Int>();
+    List<string> _battleLog = new List<string>();
 
-    GameObject _playerInstance;
-    GameObject _enemyInstance;
-    public GameObject PlayerInstance => _playerInstance;
-    public GameObject EnemyInstance => _enemyInstance;
+    List<UnitController> _playerUnits = new List<UnitController>();
+    List<UnitController> _enemyUnits = new List<UnitController>();
 
+    [SerializeField] List<GameObject> _playerUnitPrefabs;
+    [SerializeField] List<GameObject> _enemyUnitPrefabs;
+
+    public List<UnitController> GetPlayerUnits() => _playerUnits;
+    public List<UnitController> GetEnemyUnits() => _enemyUnits;
 
     private void Start()
     {
-        ResetMap();
+        InitializeGrid();
     }
 
-    public void ResetMap()
+    private void InitializeGrid()
     {
-        for (int i = 0; i < _mapSize; i++)
+        _grid = new GameObject[_gridWidth, _gridHeight];
+        //_gridOffset = new Vector2(-_gridWidth / 2 * _tileSize, -_gridHeight / 2 * _tileSize);
+        _gridOffset = new Vector2(-6f, -4f); // 일단 조정해봄
+    }
+
+
+    // 유닛 배치
+    public void PlaceUnits(List<GameObject> playerUnitsPrefabs, List<GameObject> enemyUnitsPrefabs)
+    {
+
+    }
+
+
+    // 유닛 이동 처리 및 로그 기록
+    public bool MoveUnit(GameObject unit, Vector2Int newGridPos)
+    {
+        // 배열 인덱스 범위 확인
+        if (newGridPos.x < 0 || newGridPos.x > _gridWidth || newGridPos.y < 0 || newGridPos.y >= _gridHeight)
         {
-            for (int j = 0; j < _mapSize; j++)
-            {
-                _map[i, j] = (int)UnitType.None;
-            }
+            Debug.Log("Invalid position: Out of bounds");
+            return false;
         }
 
-        // 초기 위치 설정
-        _map[2, 2] = (int)UnitType.Player; // (0, 0), 중앙
-        _map[3, 3] = (int)UnitType.Enemy; // (1, 1), 플레이어 우측 상단 생성
-
-        // 플레이어 유닛 스폰
-        if (_playerInstance)
+        // 타일에 이미 유닛이 있는지 확인
+        if (_grid[newGridPos.x, newGridPos.y] != null)
         {
-            Destroy(_playerInstance);
-        };
-        _playerInstance = Instantiate(_playerPrefab, GetWorldPosition(2, 2), Quaternion.identity);
-
-
-        // 적 유닛 스폰
-        if (_enemyInstance)
-        {
-            Destroy(_enemyInstance);
+            Debug.Log("Cannot move: Position is occupied");
+            return false;
         }
-        _enemyInstance = Instantiate(_enemyPrefab, GetWorldPosition(3, 3), Quaternion.identity);
-    }
 
-    public Vector3 GetWorldPosition(int x, int y)
-    {
-        return new Vector3(
-                x * _cellSize - (_mapSize * _cellSize / 2) + (_cellSize / 2),
-                y * _cellSize - (_mapSize * _cellSize / 2) + (_cellSize / 2),
-                0
-            );
-    }
-
-    public bool IsValidMove(int x, int y)
-    {
-        int offset = _mapSize / 2;
-        int mapX = x + offset;
-        int mapY = y + offset;
-
-        return x >= -offset && x <= offset && y >= -offset && y <= offset
-            && mapX >= 0 && mapY >= 0 && mapX < _mapSize && mapY < _mapSize
-            && _map[mapX, mapY] == (int)UnitType.None;
-    }
-
-    public void UpdateMap(int oldX, int oldY, int newX, int newY, int unitType)
-    {
-        int offset = _mapSize / 2;
-        _map[oldX + offset, oldY + offset] = (int)UnitType.None;
-        _map[newX + offset, newY + offset] = (int)unitType;
-
-        Vector3 newPosition = GetWorldPosition(newX + offset, newY + offset);
-        if (unitType == (int)UnitType.Player)
+        // 기존 위치에서 유닛 제거
+        if (_unitPositions.ContainsKey(unit))
         {
-            _playerInstance.transform.position = newPosition;
+            Vector2Int oldPos = _unitPositions[unit];
+            _grid[oldPos.x, oldPos.y] = null;
         }
-        else if (unitType == (int)UnitType.Enemy)
-        {
-            _enemyInstance.transform.position = newPosition;
-        }
+
+        // 새 위치로 유닛 이동
+        _grid[newGridPos.x, newGridPos.y] = unit;
+        _unitPositions[unit] = newGridPos;
+
+        // 월드 좌표로 이동
+        Vector2 worldPosition = GridToWorld(newGridPos);
+        unit.transform.position = worldPosition;
+
+        string log = $"Unit {unit.name} moved to ({newGridPos.x - _gridWidth / 2}, {newGridPos.y - _gridHeight / 2} at {System.DateTime.Now}";
+        _battleLog.Add(log);
+        Debug.Log(log);
+
+        return true;
     }
 
-    public void RemoveUnit(Vector2Int position)
+    // 그리드 인덱스를 월드 좌표로 변환
+    public Vector2 GridToWorld(Vector2Int gridPos)
     {
-        int offset = _mapSize / 2;
-        _map[position.x + offset, position.y + offset] = (int)UnitType.None;
+        float x = gridPos.x * _tileSize + _gridOffset.x + _tileSize / 2;
+        float y = gridPos.y * _tileSize + _gridOffset.y + _tileSize / 2;
+        return new Vector2(x, y);
+    }
+
+    // 월드 좌표를 그리드 인덱스로 변환
+    public Vector2Int WorldToGrid(Vector2 worldPosition)
+    {
+        int x = Mathf.FloorToInt((worldPosition.x - _gridOffset.x) / _tileSize);
+        int y = Mathf.FloorToInt((worldPosition.y - _gridOffset.y) / _tileSize);
+
+        x = Mathf.Clamp(x, 0, _gridWidth - 1);
+        y = Mathf.Clamp(y, 0, _gridHeight - 1);
+
+        return new Vector2Int(x, y);
+    }
+
+    // 유닛의 현재 위치 반환
+    public Vector2Int GetUnitPosition(GameObject unit)
+    {
+        if (_unitPositions.ContainsKey(unit))
+        {
+            return _unitPositions[unit];
+        }
+        return new Vector2Int(-1, -1);
+    }
+
+    // 특정 위치의 유닛 반환
+    public GameObject GetUnitAt(Vector2Int position)
+    {
+        if (position.x >= 0 && position.x < _gridWidth && position.y >= 0 && position.y < _gridHeight)
+        {
+            return _grid[position.x, position.y];
+        }
+        return null;
+    }
+
+    // 전투 로그 반환
+    public List<string> GetBattleLog()
+    {
+        return new List<string>(_battleLog);
+    }
+
+    // 실제 좌표로 변환(-6부터 6, -4부터 4 등)
+    public Vector2Int GridToMapCoordinates(Vector2Int gridPos)
+    {
+        return new Vector2Int(gridPos.x - _gridWidth / 2, gridPos.y - _gridHeight / 2);
+    }
+
+    // 맵 좌표를 그리드 인덱스로 변환
+    public Vector2Int MapToGridCoordinates(Vector2Int mapPos)
+    {
+        return new Vector2Int(mapPos.x + _gridWidth / 2, mapPos.y + _gridHeight / 2);
     }
 }
